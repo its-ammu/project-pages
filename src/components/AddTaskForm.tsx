@@ -32,6 +32,7 @@ export function AddTaskForm({
   const [dueDate, setDueDate] = useState("");
   const [loading, setLoading] = useState(false);
   const dateInputRef = useRef<HTMLInputElement>(null);
+  const datePickerContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isActive) {
@@ -39,6 +40,37 @@ export function AddTaskForm({
       setColor("none");
       setDueDate("");
     }
+  }, [isActive]);
+
+  useEffect(() => {
+    const input = dateInputRef.current;
+    if (!input || !isActive) return;
+    let closeOnClickOutside: (e: MouseEvent | TouchEvent) => void;
+    const handleFocus = () => {
+      closeOnClickOutside = (e: MouseEvent | TouchEvent) => {
+        const target = e.target as Node;
+        if (datePickerContainerRef.current?.contains(target)) return;
+        input.blur();
+        document.removeEventListener("mousedown", closeOnClickOutside);
+        document.removeEventListener("touchstart", closeOnClickOutside);
+      };
+      requestAnimationFrame(() => {
+        document.addEventListener("mousedown", closeOnClickOutside);
+        document.addEventListener("touchstart", closeOnClickOutside, { passive: true });
+      });
+    };
+    const handleBlur = () => {
+      if (typeof closeOnClickOutside === "function") {
+        document.removeEventListener("mousedown", closeOnClickOutside);
+        document.removeEventListener("touchstart", closeOnClickOutside);
+      }
+    };
+    input.addEventListener("focus", handleFocus);
+    input.addEventListener("blur", handleBlur);
+    return () => {
+      input.removeEventListener("focus", handleFocus);
+      input.removeEventListener("blur", handleBlur);
+    };
   }, [isActive]);
 
   const handleSubmit = async () => {
@@ -85,14 +117,15 @@ export function AddTaskForm({
         }}
       />
       <div className="add-task-toolbar">
-        <input
-          ref={dateInputRef}
-          type="date"
-          value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
-          style={{ position: "absolute", opacity: 0, width: 1, height: 1, margin: -1, padding: 0, border: 0, clip: "rect(0,0,0,0)" }}
-        />
-        <button
+        <div ref={datePickerContainerRef} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <input
+            ref={dateInputRef}
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            style={{ position: "absolute", opacity: 0, width: 1, height: 1, margin: -1, padding: 0, border: 0, clip: "rect(0,0,0,0)" }}
+          />
+          <button
           type="button"
           onClick={() => dateInputRef.current?.showPicker?.() ?? dateInputRef.current?.click()}
           style={{
@@ -130,6 +163,7 @@ export function AddTaskForm({
             Clear
           </button>
         )}
+        </div>
         {COLOR_OPTIONS.map((c) => (
           <div
             key={c.id}

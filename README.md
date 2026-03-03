@@ -1,36 +1,88 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Task Manager — Minimal Planner
 
-## Getting Started
+A personal task manager with projects as notebook pages, color-labeled tasks, and progress tracking. Built with Next.js, Supabase, and Tailwind. Design inspired by [Tweek](https://tweek.so/).
 
-First, run the development server:
+## Features
+
+- **Projects as Notebook Pages** — Each project appears as a distinct card on the dashboard
+- **Color-Labeled Tasks** — Red, orange, yellow, green, blue, purple (or uncolored)
+- **Task Management** — Add, complete (strikethrough), edit, delete tasks
+- **Progress Bars** — Per-project completion percentage
+- **Stats Panel** — Overall completion (donut chart), tasks by color (bar chart)
+- **Data Persistence** — Supabase PostgreSQL with email/password auth
+
+## Tech Stack
+
+- **Next.js 14** (App Router)
+- **Supabase** (PostgreSQL + Auth)
+- **TypeScript**
+- **Tailwind CSS**
+
+## Setup
+
+### 1. Clone and install
+
+```bash
+npm install
+```
+
+### 2. Create Supabase project
+
+1. Go to [supabase.com](https://supabase.com) and create a project
+2. In **Authentication** → **Providers**, ensure **Email** is enabled (default)
+3. Optional: In **Authentication** → **Email Templates**, disable "Confirm email" for faster sign-up (free tier)
+4. In **SQL Editor**, run the migration:
+
+```sql
+-- Copy contents from supabase/migrations/001_initial_schema.sql
+```
+
+Run the second migration for due dates:
+
+```sql
+-- Copy contents from supabase/migrations/002_add_due_date.sql
+alter table public.tasks add column if not exists due_date date;
+```
+
+Or use the Supabase CLI:
+
+```bash
+npx supabase init
+npx supabase db push
+```
+
+### 3. Environment variables
+
+Copy `.env.local.example` to `.env.local` and add your Supabase credentials:
+
+```bash
+cp .env.local.example .env.local
+```
+
+Get `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` from your Supabase project **Settings** → **API**.
+
+### 4. Run locally
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Deployment
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Vercel (recommended)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Push to GitHub
+2. Import project in [Vercel](https://vercel.com)
+3. Add environment variables
+4. Deploy
 
-## Learn More
+### Azure Static Web Apps
 
-To learn more about Next.js, take a look at the following resources:
+1. Create a Static Web App in Azure
+2. Connect your repo
+3. Build config: `next build` with output `.next`
+4. Add environment variables in Azure portal
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Data persists via Supabase. Sign up with email and password to get started.

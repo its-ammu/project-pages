@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  /* Disable Strict Mode to avoid Supabase auth lock issues (double mount in dev) */
+  reactStrictMode: false,
 };
 
 export default nextConfig;

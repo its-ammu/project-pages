@@ -162,52 +162,54 @@ export function TaskRow({ task, onToggle, onUpdate, onDelete }: TaskRowProps) {
               width: "100%",
             }}
           />
-          <div ref={datePickerContainerRef} className="task-edit-toolbar">
-            <input
-              ref={dateInputRef}
-              type="date"
-              value={editDate}
-              onChange={(e) => setEditDate(e.target.value)}
-              style={{ position: "absolute", opacity: 0, width: 1, height: 1, margin: -1, padding: 0, border: 0, clip: "rect(0,0,0,0)" }}
-            />
-            <button
-              type="button"
-              onClick={() => dateInputRef.current?.showPicker?.() ?? dateInputRef.current?.click()}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                padding: "4px 6px",
-                color: editDate ? "#666" : "#ddd",
-              }}
-              title="Due date (optional)"
-            >
-              <CalendarIcon />
-              {editDate && (
-                <span style={{ fontSize: 12 }}>
-                  {formatDate(editDate)}
-                </span>
-              )}
-            </button>
-            {editDate && (
+          <div className="task-edit-toolbar">
+            <div ref={datePickerContainerRef} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              <input
+                ref={dateInputRef}
+                type="date"
+                value={editDate}
+                onChange={(e) => setEditDate(e.target.value)}
+                style={{ position: "absolute", opacity: 0, width: 1, height: 1, margin: -1, padding: 0, border: 0, clip: "rect(0,0,0,0)" }}
+              />
               <button
                 type="button"
-                onClick={() => setEditDate("")}
+                onClick={() => dateInputRef.current?.showPicker?.() ?? dateInputRef.current?.click()}
                 style={{
-                  fontSize: 11,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
                   background: "none",
                   border: "none",
-                  color: "#999",
                   cursor: "pointer",
-                  padding: "2px 6px",
+                  padding: "4px 6px",
+                  color: editDate ? "#666" : "#ddd",
                 }}
+                title="Due date (optional)"
               >
-                Clear
+                <CalendarIcon />
+                {editDate && (
+                  <span style={{ fontSize: 12 }}>
+                    {formatDate(editDate)}
+                  </span>
+                )}
               </button>
-            )}
+              {editDate && (
+                <button
+                  type="button"
+                  onClick={() => setEditDate("")}
+                  style={{
+                    fontSize: 11,
+                    background: "none",
+                    border: "none",
+                    color: "#999",
+                    cursor: "pointer",
+                    padding: "2px 6px",
+                  }}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
             {COLOR_OPTIONS.map((co) => (
               <div
                 key={co.id}

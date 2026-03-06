@@ -13,6 +13,7 @@ export interface Project {
   user_id: string;
   title: string;
   created_at: string;
+  archived?: boolean;
 }
 
 export interface Task {

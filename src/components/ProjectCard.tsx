@@ -12,6 +12,7 @@ interface ProjectCardProps {
   onUpdateTask: (taskId: string, updates: { title?: string; color?: string | null; due_date?: string | null }) => Promise<unknown>;
   onDeleteTask: (taskId: string) => Promise<unknown>;
   onDeleteProject: (id: string) => Promise<unknown>;
+  onArchiveProject: (id: string, archived: boolean) => Promise<unknown>;
   onReorderTasks: (projectId: string, taskIds: string[]) => Promise<unknown>;
   addingTask: string | null;
   onSetAddingTask: (id: string | null) => void;
@@ -25,6 +26,7 @@ export function ProjectCard({
   onUpdateTask,
   onDeleteTask,
   onDeleteProject,
+  onArchiveProject,
   onReorderTasks,
   addingTask,
   onSetAddingTask,
@@ -87,19 +89,35 @@ export function ProjectCard({
         }}
       >
         <span style={{ fontWeight: 700, fontSize: 15 }}>{project.title}</span>
-        <button
-          onClick={() => onDeleteProject(project.id)}
-          style={{
-            background: "none",
-            border: "none",
-            color: "#ddd",
-            cursor: "pointer",
-            fontSize: 16,
-            lineHeight: 1,
-          }}
-        >
-          ×
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <button
+            onClick={() => onArchiveProject(project.id, !project.archived)}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#bbb",
+              cursor: "pointer",
+              fontSize: 12,
+              padding: "2px 6px",
+            }}
+            title={project.archived ? "Restore" : "Archive"}
+          >
+            {project.archived ? "Restore" : "Archive"}
+          </button>
+          <button
+            onClick={() => onDeleteProject(project.id)}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#ddd",
+              cursor: "pointer",
+              fontSize: 16,
+              lineHeight: 1,
+            }}
+          >
+            ×
+          </button>
+        </div>
       </div>
       <div
         style={{

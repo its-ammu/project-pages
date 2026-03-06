@@ -19,7 +19,7 @@ export default function Home() {
     signUp,
     signOut,
     addProject,
-    updateProject,
+    archiveProject,
     deleteProject,
     addTask,
     toggleTask,
@@ -29,14 +29,19 @@ export default function Home() {
   } = useProjects();
 
   const [view, setView] = useState<"dashboard" | "stats">("dashboard");
+  const [showArchived, setShowArchived] = useState(false);
   const [newProjectTitle, setNewProjectTitle] = useState("");
   const [addingProject, setAddingProject] = useState(false);
   const [addingTask, setAddingTask] = useState<string | null>(null);
   const addTaskInputRef = useRef<HTMLInputElement>(null);
   const newProjInputRef = useRef<HTMLInputElement>(null);
 
-  const totalTasks = projects.reduce((a, p) => a + (p.tasks?.length ?? 0), 0);
-  const doneTasks = projects.reduce(
+  const activeProjects = projects.filter((p) => !p.archived);
+  const archivedProjects = projects.filter((p) => p.archived);
+  const displayedProjects = showArchived ? archivedProjects : activeProjects;
+
+  const totalTasks = displayedProjects.reduce((a, p) => a + (p.tasks?.length ?? 0), 0);
+  const doneTasks = displayedProjects.reduce(
     (a, p) => a + (p.tasks?.filter((t) => t.completed).length ?? 0),
     0
   );
@@ -199,7 +204,10 @@ export default function Home() {
             {(["dashboard", "stats"] as const).map((v) => (
               <button
                 key={v}
-                onClick={() => setView(v)}
+                onClick={() => {
+                  setView(v);
+                  if (v === "dashboard") setShowArchived(false);
+                }}
                 style={{
                   padding: "5px 14px",
                   borderRadius: 20,
@@ -215,9 +223,30 @@ export default function Home() {
               </button>
             ))}
           </div>
-          <span style={{ fontSize: 13, color: "#aaa" }}>
-            {doneTasks}/{totalTasks} done
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            {view === "dashboard" && (
+              <button
+                onClick={() => setShowArchived(!showArchived)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: 4,
+                  color: showArchived ? "#222" : "#aaa",
+                }}
+                title={showArchived ? "Show active projects" : "Show archived projects"}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 8v13H3V8" />
+                  <path d="M1 3h22v5H1z" />
+                  <path d="M10 12h4" />
+                </svg>
+              </button>
+            )}
+            <span style={{ fontSize: 13, color: "#aaa" }}>
+              {doneTasks}/{totalTasks} done
+            </span>
+          </div>
           <button
             onClick={() => signOut()}
             style={{
@@ -243,6 +272,7 @@ export default function Home() {
       >
         {view === "dashboard" && (
           <>
+            {!showArchived && (
             <div style={{ marginBottom: 28 }}>
               <div
                 style={{
@@ -292,6 +322,7 @@ export default function Home() {
                 />
               </div>
             </div>
+            )}
 
             <div
               style={{
@@ -301,7 +332,20 @@ export default function Home() {
                 gap: 20,
               }}
             >
-              {projects.map((project) => (
+              {showArchived && displayedProjects.length === 0 && (
+                <div
+                  style={{
+                    gridColumn: "1 / -1",
+                    textAlign: "center",
+                    padding: 40,
+                    color: "#999",
+                    fontSize: 14,
+                  }}
+                >
+                  No archived projects. Archive a project from the main view.
+                </div>
+              )}
+              {displayedProjects.map((project) => (
                 <ProjectCard
                     key={project.id}
                     project={project}
@@ -310,12 +354,14 @@ export default function Home() {
                     onUpdateTask={updateTask}
                     onDeleteTask={deleteTask}
                     onDeleteProject={deleteProject}
+                    onArchiveProject={archiveProject}
                     onReorderTasks={reorderTasks}
                     addingTask={addingTask}
                     onSetAddingTask={setAddingTask}
                     addTaskInputRef={addTaskInputRef}
                   />
               ))}
+              {!showArchived && (
               <div
                 onClick={() => {
                   setAddingProject(true);
@@ -428,10 +474,11 @@ export default function Home() {
                   </>
                 )}
               </div>
+              )}
             </div>
           </>
         )}
-        {view === "stats" && <StatsPanel projects={projects} />}
+        {view === "stats" && <StatsPanel projects={activeProjects} />}
       </div>
     </div>
   );

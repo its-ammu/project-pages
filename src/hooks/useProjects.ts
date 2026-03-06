@@ -172,6 +172,23 @@ export function useProjects() {
     [userId, getToken]
   );
 
+  const archiveProject = useCallback(
+    async (id: string, archived: boolean) => {
+      const token = await getToken();
+      if (!token) return { error: new Error("Not authenticated") };
+      const res = await apiFetch(`/api/projects/${id}`, token, {
+        method: "PATCH",
+        body: JSON.stringify({ archived }),
+      });
+      if (!res.ok) return { error: new Error("Failed") };
+      setProjects((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, archived } : p))
+      );
+      return { error: null };
+    },
+    [getToken]
+  );
+
   const deleteProject = useCallback(
     async (id: string) => {
       const token = await getToken();
@@ -326,6 +343,7 @@ export function useProjects() {
     signUp,
     signOut,
     addProject,
+    archiveProject,
     updateProject: async () => ({ error: null }),
     deleteProject,
     addTask,

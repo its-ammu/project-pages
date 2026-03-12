@@ -34,7 +34,16 @@ export function ProjectCard({
 }: ProjectCardProps) {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
-  const done = project.tasks.filter((t) => t.completed).length;
+  const [showAllCompleted, setShowAllCompleted] = useState(false);
+
+  const incompleteTasks = project.tasks.filter((t) => !t.completed);
+  const completedTasks = project.tasks.filter((t) => t.completed);
+  const visibleCompletedTasks = showAllCompleted
+    ? completedTasks
+    : completedTasks.slice(0, 5);
+  const hiddenCompletedCount = completedTasks.length - visibleCompletedTasks.length;
+
+  const done = completedTasks.length;
   const total = project.tasks.length;
   const pct = total ? Math.round((done / total) * 100) : 0;
 
@@ -150,7 +159,7 @@ export function ProjectCard({
       </div>
 
       <div style={{ display: "flex", flexDirection: "column" }}>
-        {project.tasks.map((task) => (
+        {incompleteTasks.map((task) => (
           <div
             key={task.id}
             draggable
@@ -181,6 +190,58 @@ export function ProjectCard({
             />
           </div>
         ))}
+        {visibleCompletedTasks.map((task) => (
+          <div key={task.id}>
+            <TaskRow
+              task={task}
+              onToggle={() => onToggleTask(task.id)}
+              onUpdate={(updates) =>
+                onUpdateTask(task.id, {
+                  ...updates,
+                  color:
+                    updates.color === "none" || updates.color === null
+                      ? null
+                      : updates.color,
+                })
+              }
+              onDelete={() => onDeleteTask(task.id)}
+            />
+          </div>
+        ))}
+        {!showAllCompleted && hiddenCompletedCount > 0 && (
+          <button
+            onClick={() => setShowAllCompleted(true)}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#999",
+              fontSize: 12,
+              cursor: "pointer",
+              padding: "6px 4px",
+              textAlign: "left",
+              fontWeight: 500,
+            }}
+          >
+            + {hiddenCompletedCount} more completed
+          </button>
+        )}
+        {showAllCompleted && completedTasks.length > 5 && (
+          <button
+            onClick={() => setShowAllCompleted(false)}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#999",
+              fontSize: 12,
+              cursor: "pointer",
+              padding: "6px 4px",
+              textAlign: "left",
+              fontWeight: 500,
+            }}
+          >
+            Show less
+          </button>
+        )}
       </div>
 
       {addingTask === project.id ? (

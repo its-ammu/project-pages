@@ -40,3 +40,31 @@ export const COLOR_OPTIONS = [
 export function getColor(id: string | null) {
   return COLOR_OPTIONS.find((c) => c.id === (id ?? "none")) ?? COLOR_OPTIONS[0];
 }
+
+/** Returns true if task has a due date before today (incomplete tasks only). */
+export function isOverdue(task: Task): boolean {
+  if (task.completed || !task.due_date) return false;
+  try {
+    const due = new Date(task.due_date);
+    const today = new Date();
+    due.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    return due < today;
+  } catch {
+    return false;
+  }
+}
+
+/** Returns true if task due date is today (incomplete tasks only). */
+export function isDueToday(task: Task): boolean {
+  if (task.completed || !task.due_date) return false;
+  try {
+    const due = new Date(task.due_date);
+    const today = new Date();
+    due.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    return due.getTime() === today.getTime();
+  } catch {
+    return false;
+  }
+}

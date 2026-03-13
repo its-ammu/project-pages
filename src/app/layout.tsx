@@ -8,7 +8,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Project Pages — Minimal Task Manager",
+  title: "Project Pages",
   description: "Personal task manager with projects, color labels, and progress tracking",
 };
 

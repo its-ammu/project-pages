@@ -1,0 +1,111 @@
+---
+description: Project Pages — core conventions for stack, UI design, code patterns, and API structure
+alwaysApply: true
+---
+
+# Project Pages Conventions
+
+## Stack
+
+- **Next.js 16** (App Router) · **React 19** · **TypeScript** (strict) · **Supabase** (Postgres + Auth)
+- Tailwind CSS 4 imported but barely used — components use **inline styles** exclusively
+- Font: **Inter** via `next/font/google`, exposed as `--font-inter`
+- Path alias: `@/*` → `./src/*`
+
+## Directory Layout
+
+```
+src/
+  app/            # Pages + API routes (App Router)
+    api/
+      projects/   # CRUD + reorder sub-routes
+      tasks/      # CRUD per task
+  components/     # Client components (ProjectCard, TaskRow, AddTaskForm, StatsPanel, AuthForm)
+  hooks/          # useProjects — single data hook for all project/task state
+  lib/supabase/   # client.ts (browser singleton) + server.ts (per-request with access token)
+  types/          # index.ts — Task, Project, TaskColor, COLOR_OPTIONS, getColor()
+supabase/
+  migrations/     # Raw SQL migration files
+```
+
+## UI Design System
+
+This app is **minimal, monochromatic, and warm**. Follow these values exactly.
+
+### Colors
+
+| Token | Hex | Usage |
+|-------|-----|-------|
+| Background | `#fafaf8` | Page background |
+| Surface | `#fff` | Cards, nav bar, modals |
+| Primary text | `#222` | Headings, active UI, progress bars, primary buttons |
+| Body text | `#444` | Task titles (incomplete) |
+| Muted text | `#888` · `#999` · `#aaa` · `#bbb` | Secondary labels, counters, placeholders — use lighter values for less importance |
+| Completed text | `#bbb` | Struck-through task titles |
+| Border | `#ebebeb` | Card/nav borders |
+| Input border | `#e0e0e0` | Form fields |
+| Divider | `#f0f0f0` | Task row separators, progress bar tracks |
+| Active pill | `#222` bg + `#fff` text | Selected tab/button (dark on light inversion) |
+| Error text | `#c0392b` | Form validation errors |
+
+### Spacing & Radii
+
+- Card padding: `20px`
+- Card border-radius: `14px`
+- Button/input border-radius: `8px`
+- Card shadow: `0 1px 4px rgba(0,0,0,0.06)`
+- Stat card shadow: `0 1px 3px rgba(0,0,0,0.04)`
+
+### Typography
+
+- Font family: `var(--font-inter), 'Helvetica Neue', sans-serif`
+- All font sizes: 11–17px (never larger outside of stat numbers at 28px)
+- Weights: 400 (body), 500 (medium labels), 600 (buttons, emphasis), 700 (headings, card titles)
+- Section headers: 12px, uppercase, `letter-spacing: 0.05em`, color `#aaa`, weight 500–600
+
+### Interactive Patterns
+
+- Progress bars: `#222` fill on `#f0f0f0` track, `transition: width 0.3s–0.4s`
+- Buttons: no outline/border by default — use `background` + `color` contrast
+- Hover actions (trash, checkbox): hidden by default, revealed via `.task-row:hover .task-actions` CSS
+- Dashed borders for "add" affordances: `1.5px dashed #e0e0e0` or `#ddd`
+- Color labels: use `COLOR_OPTIONS` from `@/types` — never introduce new colors
+
+## Code Patterns
+
+### Components
+
+- Every component file starts with `"use client"`
+- Functional components only — no class components
+- Props defined via `interface` directly above the component
+- Styles are **always inline** (`style={{…}}`), never CSS modules or Tailwind utility classes
+- Global CSS (`globals.css`) is only for responsive breakpoints and pseudo-class styles that inline styles can't express (`:hover`, media queries)
+- Icons are inline `<svg>` — no icon library
+
+### State Management
+
+- All project/task data flows through `useProjects()` hook
+- Optimistic updates: local state is updated immediately after a successful API call, no re-fetch
+- `useCallback` for all data mutation functions, `useMemo` for derived computations
+
+### API Routes
+
+- Auth: every route reads `Authorization: Bearer <token>` header, returns 401 if missing
+- Server Supabase client: `createServerSupabaseClient(token)` creates a fresh client per request
+- Error responses: `{ error: string }` with appropriate HTTP status
+- Success responses: `{ data: … }`, `{ projects: … }`, or `{ ok: true }`
+- Allowed update fields are explicitly whitelisted
+
+### Data Model
+
+- Tasks have `position` (integer) for drag-and-drop ordering and `completed` (boolean)
+- Tasks ordered by `position ASC, created_at ASC` from the API
+- Completed tasks are rendered at the bottom of each project card, capped at 5 visible with expand/collapse
+- Projects have an `archived` boolean; archived projects are shown separately
+
+## Important Constraints
+
+- **This app is in production** — never break existing functionality when making changes
+- No external UI libraries (no shadcn, MUI, Chakra, etc.)
+- No new dependencies without explicit approval
+- Keep the visual language consistent: if it doesn't match the existing monochrome+warm palette, don't add it

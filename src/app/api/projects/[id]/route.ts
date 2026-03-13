@@ -13,17 +13,22 @@ export async function PATCH(
   const { id } = await params;
   try {
     const body = await request.json();
-    const { archived } = body;
-    if (typeof archived !== "boolean") {
+    const updates: { archived?: boolean; title?: string } = {};
+    if (typeof body.archived === "boolean") updates.archived = body.archived;
+    if (typeof body.title === "string") {
+      const t = body.title.trim();
+      if (t.length > 0) updates.title = t;
+    }
+    if (Object.keys(updates).length === 0) {
       return NextResponse.json(
-        { error: "archived must be a boolean" },
+        { error: "Provide archived and/or title to update" },
         { status: 400 }
       );
     }
     const supabase = createServerSupabaseClient(token);
     const { data, error } = await supabase
       .from("projects")
-      .update({ archived })
+      .update(updates)
       .eq("id", id)
       .select()
       .single();

@@ -1,11 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useProjects } from "@/hooks/useProjects";
 import { ProjectCard } from "@/components/ProjectCard";
 import { StatsPanel } from "@/components/StatsPanel";
 import { AuthForm } from "@/components/AuthForm";
+import { isOverdue, isDueToday } from "@/types";
 
 export default function Home() {
   const {
@@ -20,6 +21,7 @@ export default function Home() {
     signOut,
     addProject,
     archiveProject,
+    updateProject,
     deleteProject,
     addTask,
     toggleTask,
@@ -30,6 +32,7 @@ export default function Home() {
 
   const [view, setView] = useState<"dashboard" | "stats">("dashboard");
   const [showArchived, setShowArchived] = useState(false);
+  const [dueFilter, setDueFilter] = useState<"all" | "due_today" | "overdue">("all");
   const [newProjectTitle, setNewProjectTitle] = useState("");
   const [addingProject, setAddingProject] = useState(false);
   const [addingTask, setAddingTask] = useState<string | null>(null);
@@ -38,7 +41,16 @@ export default function Home() {
 
   const activeProjects = projects.filter((p) => !p.archived);
   const archivedProjects = projects.filter((p) => p.archived);
-  const displayedProjects = showArchived ? archivedProjects : activeProjects;
+  const baseDisplayed = showArchived ? archivedProjects : activeProjects;
+
+  const displayedProjects = useMemo(() => {
+    if (showArchived || dueFilter === "all") return baseDisplayed;
+    const matchTask = (t: (typeof projects)[0]["tasks"][0]) =>
+      !t.completed && (dueFilter === "overdue" ? isOverdue(t) : isDueToday(t));
+    return baseDisplayed
+      .filter((p) => (p.tasks ?? []).some(matchTask))
+      .map((p) => ({ ...p, tasks: p.tasks.filter(matchTask) }));
+  }, [baseDisplayed, dueFilter, showArchived]);
 
   const totalTasks = displayedProjects.reduce((a, p) => a + (p.tasks?.length ?? 0), 0);
   const doneTasks = displayedProjects.reduce(
@@ -324,6 +336,29 @@ export default function Home() {
             </div>
             )}
 
+            {!showArchived && (
+              <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 20 }}>
+                {(["all", "due_today", "overdue"] as const).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setDueFilter(f)}
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: 8,
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: 12,
+                      background: dueFilter === f ? "#222" : "transparent",
+                      color: dueFilter === f ? "#fff" : "#888",
+                      fontWeight: dueFilter === f ? 600 : 400,
+                    }}
+                  >
+                    {f === "all" ? "All" : f === "due_today" ? "Due today" : "Overdue"}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div
               style={{
                 display: "grid",
@@ -332,17 +367,67 @@ export default function Home() {
                 gap: 20,
               }}
             >
-              {showArchived && displayedProjects.length === 0 && (
+              {displayedProjects.length === 0 && (
                 <div
                   style={{
                     gridColumn: "1 / -1",
-                    textAlign: "center",
-                    padding: 40,
-                    color: "#999",
-                    fontSize: 14,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    padding: "48px 20px",
                   }}
                 >
-                  No archived projects. Archive a project from the main view.
+                  {showArchived ? (
+                    <>
+                      <svg width="48" height="48" viewBox="0 0 48 48" fill="none" style={{ marginBottom: 16 }}>
+                        <rect x="6" y="8" width="36" height="10" rx="3" stroke="#ddd" strokeWidth="1.5" />
+                        <path d="M8 18v20a3 3 0 003 3h26a3 3 0 003-3V18" stroke="#ddd" strokeWidth="1.5" />
+                        <line x1="20" y1="13" x2="28" y2="13" stroke="#ddd" strokeWidth="1.5" strokeLinecap="round" />
+                        <line x1="18" y1="28" x2="30" y2="28" stroke="#e8e8e8" strokeWidth="1.5" strokeLinecap="round" />
+                        <line x1="20" y1="33" x2="28" y2="33" stroke="#e8e8e8" strokeWidth="1.5" strokeLinecap="round" />
+                      </svg>
+                      <span style={{ fontSize: 14, color: "#aaa", fontWeight: 500, marginBottom: 4 }}>
+                        No archived projects
+                      </span>
+                      <span style={{ fontSize: 12, color: "#ccc" }}>
+                        Archive a project from the dashboard to see it here.
+                      </span>
+                    </>
+                  ) : dueFilter !== "all" ? (
+                    <>
+                      <svg width="48" height="48" viewBox="0 0 48 48" fill="none" style={{ marginBottom: 16 }}>
+                        <rect x="10" y="8" width="28" height="32" rx="3" stroke="#ddd" strokeWidth="1.5" />
+                        <line x1="10" y1="16" x2="38" y2="16" stroke="#ddd" strokeWidth="1.5" />
+                        <line x1="16" y1="10" x2="16" y2="6" stroke="#ddd" strokeWidth="1.5" strokeLinecap="round" />
+                        <line x1="32" y1="10" x2="32" y2="6" stroke="#ddd" strokeWidth="1.5" strokeLinecap="round" />
+                        <path d="M20 27l3 3 5-6" stroke="#ccc" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      <span style={{ fontSize: 14, color: "#aaa", fontWeight: 500, marginBottom: 4 }}>
+                        {dueFilter === "due_today" ? "Nothing due today" : "Nothing overdue"}
+                      </span>
+                      <span style={{ fontSize: 12, color: "#ccc" }}>
+                        {dueFilter === "due_today"
+                          ? "Tasks with today\u2019s due date will appear here."
+                          : "You\u2019re all caught up. No tasks past their due date."}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <svg width="48" height="48" viewBox="0 0 48 48" fill="none" style={{ marginBottom: 16 }}>
+                        <rect x="10" y="6" width="28" height="36" rx="3" stroke="#ddd" strokeWidth="1.5" />
+                        <line x1="16" y1="16" x2="32" y2="16" stroke="#e8e8e8" strokeWidth="1.5" strokeLinecap="round" />
+                        <line x1="16" y1="22" x2="28" y2="22" stroke="#e8e8e8" strokeWidth="1.5" strokeLinecap="round" />
+                        <line x1="16" y1="28" x2="30" y2="28" stroke="#e8e8e8" strokeWidth="1.5" strokeLinecap="round" />
+                        <line x1="16" y1="34" x2="24" y2="34" stroke="#e8e8e8" strokeWidth="1.5" strokeLinecap="round" />
+                      </svg>
+                      <span style={{ fontSize: 14, color: "#aaa", fontWeight: 500, marginBottom: 4 }}>
+                        No projects yet
+                      </span>
+                      <span style={{ fontSize: 12, color: "#ccc" }}>
+                        Create your first project to start organizing tasks.
+                      </span>
+                    </>
+                  )}
                 </div>
               )}
               {displayedProjects.map((project) => (
@@ -352,6 +437,7 @@ export default function Home() {
                     onAddTask={addTaskWithColor}
                     onToggleTask={toggleTask}
                     onUpdateTask={updateTask}
+                    onUpdateProject={updateProject}
                     onDeleteTask={deleteTask}
                     onDeleteProject={deleteProject}
                     onArchiveProject={archiveProject}

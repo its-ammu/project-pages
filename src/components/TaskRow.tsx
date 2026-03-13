@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { getColor, COLOR_OPTIONS } from "@/types";
+import { getColor, COLOR_OPTIONS, isOverdue, isDueToday } from "@/types";
 import type { Task } from "@/types";
 
 interface TaskRowProps {
@@ -297,7 +297,28 @@ export function TaskRow({ task, onToggle, onUpdate, onDelete }: TaskRowProps) {
             )}
           </span>
           {task.due_date && formatDate(task.due_date) && (
-            <span style={{ fontSize: 12, color: "#999", flexShrink: 0 }}>
+            <span
+              style={{
+                fontSize: 12,
+                color: isOverdue(task) ? "#c0392b" : isDueToday(task) ? "#555" : "#999",
+                flexShrink: 0,
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+              }}
+            >
+              {isOverdue(task) && (
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    background: "#c0392b",
+                    flexShrink: 0,
+                  }}
+                  title="Overdue"
+                />
+              )}
               {formatDate(task.due_date)}
             </span>
           )}

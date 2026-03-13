@@ -172,21 +172,29 @@ export function useProjects() {
     [userId, getToken]
   );
 
-  const archiveProject = useCallback(
-    async (id: string, archived: boolean) => {
+  const updateProject = useCallback(
+    async (id: string, updates: { title?: string; archived?: boolean }) => {
       const token = await getToken();
       if (!token) return { error: new Error("Not authenticated") };
       const res = await apiFetch(`/api/projects/${id}`, token, {
         method: "PATCH",
-        body: JSON.stringify({ archived }),
+        body: JSON.stringify(updates),
       });
       if (!res.ok) return { error: new Error("Failed") };
+      const json = await res.json().catch(() => ({}));
       setProjects((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, archived } : p))
+        prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
       );
-      return { error: null };
+      return { data: json.data, error: null };
     },
     [getToken]
+  );
+
+  const archiveProject = useCallback(
+    async (id: string, archived: boolean) => {
+      return updateProject(id, { archived });
+    },
+    [updateProject]
   );
 
   const deleteProject = useCallback(
@@ -344,7 +352,7 @@ export function useProjects() {
     signOut,
     addProject,
     archiveProject,
-    updateProject: async () => ({ error: null }),
+    updateProject,
     deleteProject,
     addTask,
     toggleTask,

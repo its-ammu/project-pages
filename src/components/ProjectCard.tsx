@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { TaskRow } from "./TaskRow";
 import { AddTaskForm } from "./AddTaskForm";
 import type { Project, Task } from "@/types";
@@ -10,6 +10,7 @@ interface ProjectCardProps {
   onAddTask: (projectId: string, title: string, color: string | null, dueDate?: string | null) => Promise<unknown>;
   onToggleTask: (taskId: string) => Promise<unknown>;
   onUpdateTask: (taskId: string, updates: { title?: string; color?: string | null; due_date?: string | null }) => Promise<unknown>;
+  onUpdateProject: (projectId: string, updates: { title?: string; archived?: boolean }) => Promise<unknown>;
   onDeleteTask: (taskId: string) => Promise<unknown>;
   onDeleteProject: (id: string) => Promise<unknown>;
   onArchiveProject: (id: string, archived: boolean) => Promise<unknown>;
@@ -24,6 +25,7 @@ export function ProjectCard({
   onAddTask,
   onToggleTask,
   onUpdateTask,
+  onUpdateProject,
   onDeleteTask,
   onDeleteProject,
   onArchiveProject,
@@ -35,6 +37,16 @@ export function ProjectCard({
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [showAllCompleted, setShowAllCompleted] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleVal, setTitleVal] = useState(project.title);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setTitleVal(project.title);
+  }, [project.title]);
+  useEffect(() => {
+    if (editingTitle && titleInputRef.current) titleInputRef.current.focus();
+  }, [editingTitle]);
 
   const incompleteTasks = project.tasks.filter((t) => !t.completed);
   const completedTasks = project.tasks.filter((t) => t.completed);
@@ -97,7 +109,54 @@ export function ProjectCard({
           marginBottom: 4,
         }}
       >
-        <span style={{ fontWeight: 700, fontSize: 15 }}>{project.title}</span>
+        {editingTitle ? (
+          <input
+            ref={titleInputRef}
+            value={titleVal}
+            onChange={(e) => setTitleVal(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                const t = titleVal.trim();
+                if (t) onUpdateProject(project.id, { title: t });
+                setEditingTitle(false);
+              }
+              if (e.key === "Escape") {
+                setTitleVal(project.title);
+                setEditingTitle(false);
+              }
+            }}
+            onBlur={() => {
+              const t = titleVal.trim();
+              if (t && t !== project.title) onUpdateProject(project.id, { title: t });
+              setEditingTitle(false);
+            }}
+            style={{
+              fontWeight: 700,
+              fontSize: 15,
+              border: "none",
+              borderBottom: "1.5px solid #ccc",
+              outline: "none",
+              background: "transparent",
+              padding: "1px 0",
+              flex: 1,
+              minWidth: 0,
+              color: "#222",
+            }}
+          />
+        ) : (
+          <span
+            onClick={() => setEditingTitle(true)}
+            style={{
+              fontWeight: 700,
+              fontSize: 15,
+              cursor: "text",
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
+            {project.title}
+          </span>
+        )}
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <button
             onClick={() => onArchiveProject(project.id, !project.archived)}
@@ -159,6 +218,26 @@ export function ProjectCard({
       </div>
 
       <div style={{ display: "flex", flexDirection: "column" }}>
+        {total === 0 && addingTask !== project.id && (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              padding: "18px 8px 8px",
+            }}
+          >
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" style={{ marginBottom: 8 }}>
+              <rect x="7" y="4" width="18" height="24" rx="2" stroke="#e0e0e0" strokeWidth="1.2" />
+              <line x1="11" y1="11" x2="21" y2="11" stroke="#ebebeb" strokeWidth="1.2" strokeLinecap="round" />
+              <line x1="11" y1="15.5" x2="18" y2="15.5" stroke="#ebebeb" strokeWidth="1.2" strokeLinecap="round" />
+              <line x1="11" y1="20" x2="20" y2="20" stroke="#ebebeb" strokeWidth="1.2" strokeLinecap="round" />
+            </svg>
+            <span style={{ fontSize: 12, color: "#bbb", fontWeight: 500 }}>
+              No tasks yet
+            </span>
+          </div>
+        )}
         {incompleteTasks.map((task) => (
           <div
             key={task.id}

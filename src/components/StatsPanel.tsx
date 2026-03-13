@@ -29,6 +29,33 @@ export function StatsPanel({ projects }: StatsPanelProps) {
   const circ = 2 * Math.PI * r;
   const offset = circ - (pct / 100) * circ;
 
+  if (totalTasks === 0) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          padding: "56px 20px",
+        }}
+      >
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" style={{ marginBottom: 16 }}>
+          <rect x="6" y="10" width="14" height="28" rx="2" stroke="#ddd" strokeWidth="1.5" />
+          <rect x="6" y="24" width="14" height="14" rx="0" fill="#f0f0f0" />
+          <rect x="24" y="6" width="14" height="32" rx="2" stroke="#ddd" strokeWidth="1.5" />
+          <rect x="24" y="18" width="14" height="20" rx="0" fill="#f0f0f0" />
+          <line x1="44" y1="38" x2="4" y2="38" stroke="#e8e8e8" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+        <span style={{ fontSize: 14, color: "#aaa", fontWeight: 500, marginBottom: 4 }}>
+          No stats yet
+        </span>
+        <span style={{ fontSize: 12, color: "#ccc" }}>
+          Add projects and tasks to see your progress here.
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div
       style={{

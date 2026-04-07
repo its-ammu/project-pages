@@ -14,18 +14,34 @@ export async function PATCH(
   try {
     const body = await request.json();
     const supabase = createServerSupabaseClient(token);
-    const allowedKeys = ["title", "color", "completed", "due_date", "position", "notes"];
+    const allowedKeys = ["title", "completed", "position"];
     const updates: Record<string, unknown> = {};
     for (const key of allowedKeys) {
       if (key in body) {
-        updates[key] = body[key] === "" ? null : body[key];
+        if (key === "title" && typeof body.title === "string") {
+          const t = body.title.trim();
+          if (!t) {
+            return NextResponse.json({ error: "title cannot be empty" }, { status: 400 });
+          }
+          updates.title = t;
+        } else {
+          updates[key] = body[key];
+        }
       }
     }
-    const { error } = await supabase.from("tasks").update(updates).eq("id", id);
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ error: "No valid fields" }, { status: 400 });
+    }
+    const { data, error } = await supabase
+      .from("subtasks")
+      .update(updates)
+      .eq("id", id)
+      .select()
+      .single();
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ data });
   } catch (err) {
     console.error("[API] Error:", err);
     return NextResponse.json(
@@ -47,7 +63,7 @@ export async function DELETE(
   const { id } = await params;
   try {
     const supabase = createServerSupabaseClient(token);
-    const { error } = await supabase.from("tasks").delete().eq("id", id);
+    const { error } = await supabase.from("subtasks").delete().eq("id", id);
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }

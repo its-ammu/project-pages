@@ -6,7 +6,9 @@ import { useProjects } from "@/hooks/useProjects";
 import { ProjectCard } from "@/components/ProjectCard";
 import { StatsPanel } from "@/components/StatsPanel";
 import { AuthForm } from "@/components/AuthForm";
+import { TaskDetailPanel } from "@/components/TaskDetailPanel";
 import { isOverdue, isDueToday } from "@/types";
+import { projectProgressUnits, isTaskDoneForDisplay } from "@/lib/taskProgress";
 
 export default function Home() {
   const {
@@ -28,8 +30,12 @@ export default function Home() {
     updateTask,
     deleteTask,
     reorderTasks,
+    addSubtask,
+    updateSubtask,
+    deleteSubtask,
   } = useProjects();
 
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [view, setView] = useState<"dashboard" | "stats">("dashboard");
   const [showArchived, setShowArchived] = useState(false);
   const [dueFilter, setDueFilter] = useState<"all" | "due_today" | "overdue">("all");
@@ -46,18 +52,45 @@ export default function Home() {
   const displayedProjects = useMemo(() => {
     if (showArchived || dueFilter === "all") return baseDisplayed;
     const matchTask = (t: (typeof projects)[0]["tasks"][0]) =>
-      !t.completed && (dueFilter === "overdue" ? isOverdue(t) : isDueToday(t));
+      !isTaskDoneForDisplay(t) &&
+      (dueFilter === "overdue" ? isOverdue(t) : isDueToday(t));
     return baseDisplayed
       .filter((p) => (p.tasks ?? []).some(matchTask))
       .map((p) => ({ ...p, tasks: p.tasks.filter(matchTask) }));
   }, [baseDisplayed, dueFilter, showArchived]);
 
-  const totalTasks = displayedProjects.reduce((a, p) => a + (p.tasks?.length ?? 0), 0);
-  const doneTasks = displayedProjects.reduce(
-    (a, p) => a + (p.tasks?.filter((t) => t.completed).length ?? 0),
-    0
-  );
-  const pct = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0;
+  const navProgress = useMemo(() => {
+    let done = 0;
+    let total = 0;
+    for (const p of displayedProjects) {
+      const u = projectProgressUnits(p);
+      done += u.done;
+      total += u.total;
+    }
+    return {
+      done,
+      total,
+      pct: total ? Math.round((done / total) * 100) : 0,
+    };
+  }, [displayedProjects]);
+
+  const selectedTaskContext = useMemo(() => {
+    if (!selectedTaskId) return null;
+    for (const p of projects) {
+      const t = p.tasks?.find((x) => x.id === selectedTaskId);
+      if (t) return { task: t, projectTitle: p.title };
+    }
+    return null;
+  }, [projects, selectedTaskId]);
+
+  useEffect(() => {
+    if (
+      selectedTaskId &&
+      !projects.some((p) => p.tasks?.some((t) => t.id === selectedTaskId))
+    ) {
+      setSelectedTaskId(null);
+    }
+  }, [projects, selectedTaskId]);
 
   const handleAddProject = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -256,7 +289,7 @@ export default function Home() {
               </button>
             )}
             <span style={{ fontSize: 13, color: "#aaa" }}>
-              {doneTasks}/{totalTasks} done
+              {navProgress.done}/{navProgress.total} done
             </span>
           </div>
           <button
@@ -311,7 +344,7 @@ export default function Home() {
                     color: "#555",
                   }}
                 >
-                  {pct}%
+                  {navProgress.pct}%
                 </span>
               </div>
               <div
@@ -325,7 +358,7 @@ export default function Home() {
                 <div
                   style={{
                     height: "100%",
-                    width: `${pct}%`,
+                    width: `${navProgress.pct}%`,
                     background:
                       "#222",
                     borderRadius: 4,
@@ -436,7 +469,7 @@ export default function Home() {
                     project={project}
                     onAddTask={addTaskWithColor}
                     onToggleTask={toggleTask}
-                    onUpdateTask={updateTask}
+                    onOpenTask={setSelectedTaskId}
                     onUpdateProject={updateProject}
                     onDeleteTask={deleteTask}
                     onDeleteProject={deleteProject}
@@ -566,6 +599,19 @@ export default function Home() {
         )}
         {view === "stats" && <StatsPanel projects={activeProjects} />}
       </div>
+      {selectedTaskContext && (
+        <TaskDetailPanel
+          task={selectedTaskContext.task}
+          projectTitle={selectedTaskContext.projectTitle}
+          onClose={() => setSelectedTaskId(null)}
+          onUpdateTask={updateTask}
+          onToggleTask={toggleTask}
+          onDeleteTask={deleteTask}
+          onAddSubtask={addSubtask}
+          onUpdateSubtask={updateSubtask}
+          onDeleteSubtask={deleteSubtask}
+        />
+      )}
     </div>
   );
 }

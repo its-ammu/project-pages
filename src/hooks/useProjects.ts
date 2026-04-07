@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { createSupabaseClient, isSupabaseConfigured } from "@/lib/supabase/client";
-import type { Project, Task } from "@/types";
+import type { Project, Task, Subtask } from "@/types";
 
 async function apiFetch(
   path: string,
@@ -221,14 +221,18 @@ export function useProjects() {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) return { data: null, error: new Error(json.error || "Failed") };
+      const newTask: Task = {
+        ...json.data,
+        subtasks: json.data.subtasks ?? [],
+      };
       setProjects((prev) =>
         prev.map((p) =>
           p.id === projectId
-            ? { ...p, tasks: [...(p.tasks ?? []), json.data] }
+            ? { ...p, tasks: [...(p.tasks ?? []), newTask] }
             : p
         )
       );
-      return { data: json.data, error: null };
+      return { data: newTask, error: null };
     },
     [projects, getToken]
   );
@@ -240,6 +244,47 @@ export function useProjects() {
       const project = projects.find((p) => p.tasks?.some((t) => t.id === taskId));
       const task = project?.tasks?.find((t) => t.id === taskId);
       if (!task) return { error: new Error("Task not found") };
+      const subs = task.subtasks ?? [];
+      if (subs.length > 0) {
+        const allDone = subs.every((s) => s.completed);
+        const next = !allDone;
+        const results = await Promise.all(
+          subs.map((s) =>
+            apiFetch(`/api/subtasks/${s.id}`, token, {
+              method: "PATCH",
+              body: JSON.stringify({ completed: next }),
+            })
+          )
+        );
+        if (results.some((r) => !r.ok)) return { error: new Error("Failed") };
+        const taskRes = await apiFetch(`/api/tasks/${taskId}`, token, {
+          method: "PATCH",
+          body: JSON.stringify({ completed: next }),
+        });
+        if (!taskRes.ok) return { error: new Error("Failed") };
+        setProjects((prev) =>
+          prev.map((p) =>
+            p.id === project!.id
+              ? {
+                  ...p,
+                  tasks: p.tasks.map((t) =>
+                    t.id === taskId
+                      ? {
+                          ...t,
+                          completed: next,
+                          subtasks: (t.subtasks ?? []).map((s) => ({
+                            ...s,
+                            completed: next,
+                          })),
+                        }
+                      : t
+                  ),
+                }
+              : p
+          )
+        );
+        return { error: null };
+      }
       const res = await apiFetch(`/api/tasks/${taskId}`, token, {
         method: "PATCH",
         body: JSON.stringify({ completed: !task.completed }),
@@ -289,7 +334,16 @@ export function useProjects() {
   );
 
   const updateTask = useCallback(
-    async (taskId: string, updates: { title?: string; color?: string | null; due_date?: string | null }) => {
+    async (
+      taskId: string,
+      updates: {
+        title?: string;
+        color?: string | null;
+        due_date?: string | null;
+        notes?: string | null;
+        completed?: boolean;
+      }
+    ) => {
       const token = await getToken();
       if (!token) return { error: new Error("Not authenticated") };
       const project = projects.find((p) => p.tasks?.some((t) => t.id === taskId));
@@ -315,6 +369,106 @@ export function useProjects() {
       return { error: null };
     },
     [projects, getToken]
+  );
+
+  const addSubtask = useCallback(
+    async (taskId: string, title: string) => {
+      const token = await getToken();
+      if (!token) return { data: null, error: new Error("Not authenticated") };
+      const res = await apiFetch(`/api/tasks/${taskId}/subtasks`, token, {
+        method: "POST",
+        body: JSON.stringify({ title }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) return { data: null, error: new Error(json.error || "Failed") };
+      const sub = json.data as Subtask;
+      setProjects((prev) =>
+        prev.map((p) => ({
+          ...p,
+          tasks: p.tasks.map((t) =>
+            t.id === taskId
+              ? { ...t, subtasks: [...(t.subtasks ?? []), sub] }
+              : t
+          ),
+        }))
+      );
+      return { data: sub, error: null };
+    },
+    [getToken]
+  );
+
+  const updateSubtask = useCallback(
+    async (
+      subtaskId: string,
+      taskId: string,
+      updates: { title?: string; completed?: boolean }
+    ) => {
+      const token = await getToken();
+      if (!token) return { error: new Error("Not authenticated") };
+      const task = projects
+        .find((p) => p.tasks?.some((t) => t.id === taskId))
+        ?.tasks.find((t) => t.id === taskId);
+      if (!task) return { error: new Error("Task not found") };
+      const res = await apiFetch(`/api/subtasks/${subtaskId}`, token, {
+        method: "PATCH",
+        body: JSON.stringify(updates),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) return { error: new Error(json.error || "Failed") };
+      const updated = json.data as Subtask | undefined;
+      if (!updated) return { error: new Error("Failed") };
+      const newSubs = (task.subtasks ?? []).map((s) =>
+        s.id === subtaskId ? updated : s
+      );
+      setProjects((prev) =>
+        prev.map((p) => ({
+          ...p,
+          tasks: p.tasks.map((t) =>
+            t.id === taskId ? { ...t, subtasks: newSubs } : t
+          ),
+        }))
+      );
+      if (newSubs.length > 0) {
+        const allDone = newSubs.every((s) => s.completed);
+        if (task.completed !== allDone) {
+          await updateTask(taskId, { completed: allDone });
+        }
+      }
+      return { error: null };
+    },
+    [getToken, projects, updateTask]
+  );
+
+  const deleteSubtask = useCallback(
+    async (subtaskId: string, taskId: string) => {
+      const token = await getToken();
+      if (!token) return { error: new Error("Not authenticated") };
+      const task = projects
+        .find((p) => p.tasks?.some((t) => t.id === taskId))
+        ?.tasks.find((t) => t.id === taskId);
+      if (!task) return { error: new Error("Task not found") };
+      const remaining = (task.subtasks ?? []).filter((s) => s.id !== subtaskId);
+      const res = await apiFetch(`/api/subtasks/${subtaskId}`, token, {
+        method: "DELETE",
+      });
+      if (!res.ok) return { error: new Error("Failed") };
+      setProjects((prev) =>
+        prev.map((p) => ({
+          ...p,
+          tasks: p.tasks.map((t) =>
+            t.id === taskId ? { ...t, subtasks: remaining } : t
+          ),
+        }))
+      );
+      if (remaining.length > 0) {
+        const allDone = remaining.every((s) => s.completed);
+        if (task.completed !== allDone) {
+          await updateTask(taskId, { completed: allDone });
+        }
+      }
+      return { error: null };
+    },
+    [getToken, projects, updateTask]
   );
 
   const deleteTask = useCallback(
@@ -359,5 +513,8 @@ export function useProjects() {
     updateTask,
     deleteTask,
     reorderTasks,
+    addSubtask,
+    updateSubtask,
+    deleteSubtask,
   };
 }

@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { COLOR_OPTIONS } from "@/types";
 import type { Project, Task } from "@/types";
+import { projectProgressUnits, isTaskDoneForDisplay } from "@/lib/taskProgress";
 
 interface StatsPanelProps {
   projects: (Project & { tasks: Task[] })[];
@@ -11,8 +12,20 @@ interface StatsPanelProps {
 export function StatsPanel({ projects }: StatsPanelProps) {
   const allTasks = projects.flatMap((p) => p.tasks ?? []);
   const totalTasks = allTasks.length;
-  const doneTasks = allTasks.filter((t) => t.completed).length;
-  const pct = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0;
+  const doneTasks = allTasks.filter((t) => isTaskDoneForDisplay(t)).length;
+
+  const { done: doneUnits, total: totalUnits } = useMemo(() => {
+    let done = 0;
+    let total = 0;
+    for (const p of projects) {
+      const u = projectProgressUnits(p);
+      done += u.done;
+      total += u.total;
+    }
+    return { done, total };
+  }, [projects]);
+
+  const pct = totalUnits ? Math.round((doneUnits / totalUnits) * 100) : 0;
 
   const colorCounts = useMemo(() => {
     return COLOR_OPTIONS.filter((c) => c.id !== "none").map((c) => ({
@@ -176,7 +189,7 @@ export function StatsPanel({ projects }: StatsPanelProps) {
             </text>
           </svg>
           <div style={{ fontSize: 12, color: "#aaa" }}>
-            {doneTasks} of {totalTasks} tasks done
+            {doneUnits} of {totalUnits} done
           </div>
         </div>
 
@@ -278,8 +291,7 @@ export function StatsPanel({ projects }: StatsPanelProps) {
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {projects.map((proj) => {
-            const d = proj.tasks.filter((t) => t.completed).length;
-            const tot = proj.tasks.length;
+            const { done: d, total: tot } = projectProgressUnits(proj);
             const p = tot ? Math.round((d / tot) * 100) : 0;
             return (
               <div key={proj.id}>

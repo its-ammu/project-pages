@@ -62,6 +62,16 @@ body {
   align-items: center;
 }
 
+/* Task detail sheet: warm notepad paper (light) */
+.task-detail-paper {
+  background-color: #fdfcfa;
+  background-image: repeating-linear-gradient(
+    transparent,
+    transparent 27px,
+    rgba(236, 234, 228, 0.35) 28px
+  );
+}
+
 .main-content {
   padding: 16px;
 }

@@ -41,14 +41,49 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const tasksByProject = (tasks ?? []).reduce<Record<string, typeof tasks>>(
-      (acc, t) => {
-        if (!acc[t.project_id]) acc[t.project_id] = [];
-        acc[t.project_id].push(t);
-        return acc;
-      },
-      {}
-    );
+    const taskList = tasks ?? [];
+    const taskIds = taskList.map((t) => t.id);
+
+    let subtasksByTask: Record<string, unknown[]> = {};
+    if (taskIds.length > 0) {
+      const { data: subtasks, error: subtasksError } = await supabase
+        .from("subtasks")
+        .select("*")
+        .in("task_id", taskIds)
+        .order("position", { ascending: true })
+        .order("created_at", { ascending: true });
+
+      if (subtasksError) {
+        console.error("[API] Subtasks error:", subtasksError);
+        return NextResponse.json(
+          { error: subtasksError.message },
+          { status: 500 }
+        );
+      }
+
+      subtasksByTask = (subtasks ?? []).reduce<Record<string, unknown[]>>(
+        (acc, s) => {
+          const tid = s.task_id as string;
+          if (!acc[tid]) acc[tid] = [];
+          acc[tid].push(s);
+          return acc;
+        },
+        {}
+      );
+    }
+
+    const tasksWithSubs = taskList.map((t) => ({
+      ...t,
+      subtasks: subtasksByTask[t.id] ?? [],
+    }));
+
+    const tasksByProject = tasksWithSubs.reduce<
+      Record<string, typeof tasksWithSubs>
+    >((acc, t) => {
+      if (!acc[t.project_id]) acc[t.project_id] = [];
+      acc[t.project_id].push(t);
+      return acc;
+    }, {});
 
     const result = projects.map((p) => ({
       ...p,

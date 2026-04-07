@@ -16,6 +16,15 @@ export interface Project {
   archived?: boolean;
 }
 
+export interface Subtask {
+  id: string;
+  task_id: string;
+  title: string;
+  completed: boolean;
+  position: number;
+  created_at: string;
+}
+
 export interface Task {
   id: string;
   project_id: string;
@@ -25,6 +34,8 @@ export interface Task {
   created_at: string;
   position: number;
   due_date?: string | null;
+  notes?: string | null;
+  subtasks?: Subtask[];
 }
 
 export const COLOR_OPTIONS = [
@@ -43,6 +54,8 @@ export function getColor(id: string | null) {
 
 /** Returns true if task has a due date before today (incomplete tasks only). */
 export function isOverdue(task: Task): boolean {
+  const subs = task.subtasks ?? [];
+  if (subs.length > 0 && subs.every((s) => s.completed)) return false;
   if (task.completed || !task.due_date) return false;
   try {
     const due = new Date(task.due_date);
@@ -57,6 +70,8 @@ export function isOverdue(task: Task): boolean {
 
 /** Returns true if task due date is today (incomplete tasks only). */
 export function isDueToday(task: Task): boolean {
+  const subs = task.subtasks ?? [];
+  if (subs.length > 0 && subs.every((s) => s.completed)) return false;
   if (task.completed || !task.due_date) return false;
   try {
     const due = new Date(task.due_date);

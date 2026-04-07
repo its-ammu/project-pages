@@ -4,12 +4,13 @@ import { useState, useEffect, useRef } from "react";
 import { TaskRow } from "./TaskRow";
 import { AddTaskForm } from "./AddTaskForm";
 import type { Project, Task } from "@/types";
+import { projectProgressUnits, isTaskDoneForDisplay } from "@/lib/taskProgress";
 
 interface ProjectCardProps {
   project: Project & { tasks: Task[] };
   onAddTask: (projectId: string, title: string, color: string | null, dueDate?: string | null) => Promise<unknown>;
   onToggleTask: (taskId: string) => Promise<unknown>;
-  onUpdateTask: (taskId: string, updates: { title?: string; color?: string | null; due_date?: string | null }) => Promise<unknown>;
+  onOpenTask: (taskId: string) => void;
   onUpdateProject: (projectId: string, updates: { title?: string; archived?: boolean }) => Promise<unknown>;
   onDeleteTask: (taskId: string) => Promise<unknown>;
   onDeleteProject: (id: string) => Promise<unknown>;
@@ -24,7 +25,7 @@ export function ProjectCard({
   project,
   onAddTask,
   onToggleTask,
-  onUpdateTask,
+  onOpenTask,
   onUpdateProject,
   onDeleteTask,
   onDeleteProject,
@@ -48,15 +49,14 @@ export function ProjectCard({
     if (editingTitle && titleInputRef.current) titleInputRef.current.focus();
   }, [editingTitle]);
 
-  const incompleteTasks = project.tasks.filter((t) => !t.completed);
-  const completedTasks = project.tasks.filter((t) => t.completed);
+  const incompleteTasks = project.tasks.filter((t) => !isTaskDoneForDisplay(t));
+  const completedTasks = project.tasks.filter((t) => isTaskDoneForDisplay(t));
   const visibleCompletedTasks = showAllCompleted
     ? completedTasks
     : completedTasks.slice(0, 5);
   const hiddenCompletedCount = completedTasks.length - visibleCompletedTasks.length;
 
-  const done = completedTasks.length;
-  const total = project.tasks.length;
+  const { done, total } = projectProgressUnits(project);
   const pct = total ? Math.round((done / total) * 100) : 0;
 
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
@@ -256,15 +256,7 @@ export function ProjectCard({
             <TaskRow
               task={task}
               onToggle={() => onToggleTask(task.id)}
-              onUpdate={(updates) =>
-                onUpdateTask(task.id, {
-                  ...updates,
-                  color:
-                    updates.color === "none" || updates.color === null
-                      ? null
-                      : updates.color,
-                })
-              }
+              onOpenDetail={() => onOpenTask(task.id)}
               onDelete={() => onDeleteTask(task.id)}
             />
           </div>
@@ -274,15 +266,7 @@ export function ProjectCard({
             <TaskRow
               task={task}
               onToggle={() => onToggleTask(task.id)}
-              onUpdate={(updates) =>
-                onUpdateTask(task.id, {
-                  ...updates,
-                  color:
-                    updates.color === "none" || updates.color === null
-                      ? null
-                      : updates.color,
-                })
-              }
+              onOpenDetail={() => onOpenTask(task.id)}
               onDelete={() => onDeleteTask(task.id)}
             />
           </div>
